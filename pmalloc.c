@@ -24,16 +24,33 @@ void* prealloc(void *p, size_t size);
 
 int main()
 {
-    char* val = pmalloc(sizeof(char));
-    char str[] = "salut ca va oui pas bien et apres je sais pas lol";
-    strcpy(val, str);
-    printf("%s", val);
-    return 0;
+    printf("%d", word_align(2));
 }
 
 static inline size_t word_align(size_t n)
 {
-        
+    if (n < 0)
+        return 0;
+    else {
+        size_t s = sizeof(size_t);
+        if (s >= n) {
+            if (s == n)
+                return s;
+            else{
+                size_t b = n^(~s);
+                if (b == 0)
+                    return s;
+                s = s - b;
+                return n^s;
+            }
+        } else {
+            size_t c = s;
+            while ( s < n ) {
+                s += c;
+            }
+            return s;
+        }
+    }
 }
 
 void zerofill(void *ptr, size_t len)
