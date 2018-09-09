@@ -24,7 +24,6 @@ void* prealloc(void *p, size_t size);
 
 int main()
 {
-    printf("%d", word_align(2));
 }
 
 static inline size_t word_align(size_t n)
@@ -37,11 +36,11 @@ static inline size_t word_align(size_t n)
             if (s == n)
                 return s;
             else{
-                size_t b = n^(~s);
+                size_t b = n^(s - 1);
                 if (b == 0)
                     return s;
                 s = s - b;
-                return n^s;
+                return s - (n^s);
             }
         } else {
             size_t c = s;
@@ -126,6 +125,7 @@ static struct chunk* get_chunk(void *p)
 void* pmalloc(size_t size)
 {
     struct chunk *ck = find_chunk(0);
+    size = word_align(size);
     if (ck->next == NULL)
     {
         int i = extend_heap(ck, size);
@@ -147,7 +147,7 @@ void pfree(void *pt)
 
 void* pcalloc(size_t size)
 {
-    void* pt = pmalloc(size);
+    void* pt = pmalloc(word_align(size));
     zerofill(pt, size);
     return pt;
 }
