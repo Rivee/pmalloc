@@ -26,55 +26,52 @@ int main()
 {
 }
 
+// Function to align with the size of size_t
 static inline size_t word_align(size_t n)
 {
-    if (n < 0)
-        return 0;
-    else {
-        size_t s = sizeof(size_t);
-        if (s >= n) {
-            if (s == n)
-                return s;
-            else{
-                size_t b = n^(s - 1);
-                if (b == 0)
-                    return s;
-                s = s - b;
-                return s - (n^s);
-            }
-        } else {
-            size_t c = s;
-            while ( s < n ) {
-                s += c;
-            }
+    size_t s = sizeof(size_t);
+    if (s >= n) {
+        if (s == n)
             return s;
+        else {
+            size_t b = n^(s - 1); // need find other solution for s - 1 (Bit-wise complement)
+            if (b == 0)
+                return s;
+            s = s - b;
+            return s - (n^s);
         }
+    } else { // Case when n > sizeof(size_t)
+        size_t c = s;
+        while ( s < n ) {
+            s += c;
+        }
+        return s;
     }
 }
 
+// Set to zero ptr with the length
 void zerofill(void *ptr, size_t len)
 {
-    for (int i = 0; i < len; i++)
-    {
+    for (size_t i = 0; i < len; i++) {
         ptr = 0;
         ptr++;
     }
 }
 
+// Copy scr to dst
 void wordcpy(void *dst, void *src, size_t len)
 {
-    for(int i = 0; i < len; i++)
-    {
-        dst = src;
-        src++;
+    for(size_t i = 0; i < len; i++) {
+        *(char *)dst++ = *(char *)src++;
     }
+
 }
 
+// Return the base chunk if it was not created, else return new one
 static struct chunk* get_base(void)
 {
   static struct chunk *base = NULL;
-  if (base == NULL) 
-  {
+  if (base == NULL) { // Check if base hasn't been created
       base = sbrk(sizeof(struct chunk));
       base->next = NULL;
       base->prev = NULL;
@@ -85,6 +82,7 @@ static struct chunk* get_base(void)
   return base;
 }
 
+// extend the head with the next size
 static int extend_heap(struct chunk *last, size_t size)
 {
     if (last->next != NULL)
@@ -95,16 +93,16 @@ static int extend_heap(struct chunk *last, size_t size)
     last->next->size = 0;
     last->next->next = NULL;
     last->next->free = 0;
-    last->next->data = sbrk(0) - size;
+    last->next->data = sbrk(0) - size; // get the data ptr on getting the actual data limit and the size
     
     return 1;  
 }
 
+// research a free chunk
 static struct chunk* find_chunk(size_t size)
 {
     struct chunk *bs = get_base();
-    while (bs->next != NULL)
-    {
+    while (bs->next != NULL) {
        if (bs->next->size == size && bs->next->free)
            return bs;
         bs = bs->next;
@@ -112,6 +110,7 @@ static struct chunk* find_chunk(size_t size)
     return bs;
 }
 
+// get the chunk associate with p
 static struct chunk* get_chunk(void *p)
 {
     struct chunk *ck = get_base();
@@ -126,8 +125,7 @@ void* pmalloc(size_t size)
 {
     struct chunk *ck = find_chunk(0);
     size = word_align(size);
-    if (ck->next == NULL)
-    {
+    if (ck->next == NULL) { // extand the head if find chunk cannot find free place
         int i = extend_heap(ck, size);
         if (i == 0)
             return NULL;
@@ -141,30 +139,28 @@ void* pmalloc(size_t size)
 void pfree(void *pt)
 {
    struct chunk *ck = get_chunk(pt);
-   ck->free = 1;
+   ck->free = 1; // change it to a free chunk
 }
 
 
 void* pcalloc(size_t size)
 {
     void* pt = pmalloc(word_align(size));
-    zerofill(pt, size);
+    zerofill(pt, size); // fill thr data prt to zero
     return pt;
 }
 
 void* prealloc(void *p, size_t size)
 {
     struct chunk *ck = get_chunk(p);
-    if (ck->size > sizeof(ck->data) + size)
-    {
+    if (ck->size > sizeof(ck->data) + size){ // if the size is good enough, change the data ptr 
         ck->data += size; 
     }
-    else
-    {
+    else {
         void* d = p;
         pfree(p);
         p = pmalloc(size);
-        wordcpy(d, p, size);
+        wordcpy(d, p, size); // copy the old data to the new one
     }
     return p;
 }
