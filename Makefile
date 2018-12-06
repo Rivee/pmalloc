@@ -5,8 +5,8 @@ CFLAGS= -Wall -Wextra -std=c99 -fno-builtin -O0 -g -fPIC
 LDFLAGS=
 LDLIBS=
  
-libmalloc.so: pmalloc.o
-	${CC} -shared -o libmalloc.so pmalloc.o
+libmalloc.so: malloc.o
+	${CC} -shared -o libmalloc.so malloc.o
  
 clean:
 	rm -f *~ *.o
