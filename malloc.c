@@ -23,10 +23,6 @@ void free(void *pt);
 void* calloc(size_t size);
 void* realloc(void *p, size_t size);
 
-int main()
-{
-}
-
 // Function to align with the size of size_t
 static inline size_t word_align(size_t n)
 {
