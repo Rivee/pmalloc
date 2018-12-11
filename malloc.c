@@ -1,8 +1,7 @@
-#include <unistd.h>
-
-#define _BSD_SOURCE 
-#define _SVID_SOURCE
+#define _DEFAULT_SOURCE 
 #define _XOPEN_SOURCE 500
+
+#include <unistd.h>
 
 struct chunk {
   struct chunk *next, *prev;
@@ -10,18 +9,6 @@ struct chunk {
   long          free;
   void         *data;
 };
-
-
-static inline size_t word_align(size_t n);
-void zerofill(void *ptr, size_t len);
-void wordcpy(void *dst, void *src, size_t len);
-static int extend_heap(struct chunk *last, size_t size);
-static struct chunk* find_chunk(size_t size);
-static struct chunk* get_chunk(void *p);
-void* malloc(size_t size);
-void free(void *pt);
-void* calloc(size_t size);
-void* realloc(void *p, size_t size);
 
 // Function to align with the size of size_t
 static inline size_t word_align(size_t n)
@@ -69,7 +56,9 @@ static struct chunk* get_base(void)
 {
   static struct chunk *base = NULL;
   if (base == NULL) { // Check if base hasn't been created
-      base = sbrk(sizeof(struct chunk));
+      base = (struct chunk*)sbrk(0);
+      if (sbrk(sizeof(struct chunk)) == (void*) -1)
+          return NULL;
       base->next = NULL;
       base->prev = NULL;
       base->size = 0;
@@ -84,14 +73,13 @@ static int extend_heap(struct chunk *last, size_t size)
 {
     if (last->next != NULL)
         return 0;
-    last->next = sbrk(sizeof(struct chunk) + size);
-    if (last->next == NULL)
+    last->next = sbrk(0);
+    if (sbrk(sizeof(struct chunk) + size) == (void*) -1)
         return 0;
-    last->next->size = 0;
+    last->next->size = size;
     last->next->next = NULL;
     last->next->free = 0;
-    last->next->data = sbrk(0) - size; // get the data ptr on getting the actual data limit and the size
-    
+    last->next->data = (void*)sbrk(0) - size; // get the data ptr on getting the actual data limit and the size
     return 1;  
 }
 
