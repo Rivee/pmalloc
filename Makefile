@@ -1,7 +1,7 @@
 # Makefile for malloc
  
 CC=gcc
-CFLAGS= -Wall -Wextra -std=c99 -fno-builtin -O0 -g -fPIC
+CFLAGS= -Wall -Wextra -std=c99 -fno-builtin -g -fPIC
 LDFLAGS=
 LDLIBS=
  

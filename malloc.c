@@ -3,6 +3,11 @@
 
 #include <unistd.h>
 
+#undef malloc
+#undef realloc
+#undef calloc
+#undef free
+
 struct chunk {
   struct chunk *next, *prev;
   size_t        size;
@@ -13,24 +18,7 @@ struct chunk {
 // Function to align with the size of size_t
 static inline size_t word_align(size_t n)
 {
-    size_t s = sizeof(size_t);
-    if (s >= n) {
-        if (s == n)
-            return s;
-        else {
-            size_t b = n^(s - 1); // need find other solution for s - 1 (Bit-wise complement)
-            if (b == 0)
-                return s;
-            s = s - b;
-            return s - (n^s);
-        }
-    } else { // Case when n > sizeof(size_t)
-        size_t c = s;
-        while ( s < n ) {
-            s += c;
-        }
-        return s;
-    }
+    return ((n + sizeof(size_t) - 1) & -sizeof(size_t)); 
 }
 
 // Set to zero ptr with the length
@@ -87,8 +75,8 @@ static int extend_heap(struct chunk *last, size_t size)
 static struct chunk* find_chunk(size_t size)
 {
     struct chunk *bs = get_base();
-    while (bs->next != NULL) {
-       if (bs->next->size == size && bs->next->free)
+    while (bs->next) {
+       if (bs->next->size >= size && bs->next->free)
            return bs;
         bs = bs->next;
     }
@@ -101,15 +89,15 @@ static struct chunk* get_chunk(void *p)
     struct chunk *ck = get_base();
     if (p == NULL)
         return NULL;
-    while (ck->next != NULL && &(ck->data) != &p)
+    while (ck->next < (struct chunk*)sbrk(0) && ck->data != p)
         ck = ck->next;
     return ck;
 }
 
 void* malloc(size_t size)
 {
-    struct chunk *ck = find_chunk(0);
     size = word_align(size);
+    struct chunk *ck = find_chunk(size);
     if (ck->next == NULL) { // extand the head if find chunk cannot find free place
         int i = extend_heap(ck, size);
         if (i == 0)
@@ -121,31 +109,54 @@ void* malloc(size_t size)
 }
 
 
-void pfree(void *pt)
+void free(void *pt)
 {
-   struct chunk *ck = get_chunk(pt);
-   ck->free = 1; // change it to a free chunk
+    if (pt) {
+        struct chunk *ck = get_chunk(pt);
+        ck->free = 1; // change it to a free chunk
+    }
 }
 
 
-void* calloc(size_t size)
+void* calloc(size_t nb, size_t size)
 {
     void* pt = malloc(word_align(size));
-    zerofill(pt, size); // fill thr data prt to zero
+    zerofill(pt, size * nb); // fill thr data prt to zero
     return pt;
 }
 
 void* realloc(void *p, size_t size)
 {
+    if (p == NULL)
+        return malloc(size);
+    else if (size == 0){
+        free(p);
+        return NULL;
+    }
     struct chunk *ck = get_chunk(p);
     if (ck->size > sizeof(ck->data) + size){ // if the size is good enough, change the data ptr 
         ck->data += size; 
     }
     else {
         void* d = p;
-        pfree(p);
+        free(p);
         p = malloc(size);
         wordcpy(d, p, size); // copy the old data to the new one
     }
     return p;
 }
+
+/*int main()
+{
+    int *c = malloc(sizeof(int));
+    *c = 1;
+    realloc(c, sizeof(int) * 30);
+    free(c);
+    int *b = malloc(sizeof(int));
+    *b = 2;
+    free(b);
+    int *a = malloc(sizeof(int));
+    *a = 3;
+    free(a);
+    return 0;
+}*/
